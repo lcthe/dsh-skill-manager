@@ -9,6 +9,7 @@ import { useCallback, useMemo, useState } from 'react'
 import type { PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 import type { NS } from './locales.ts'
 import css from './skill-manager.module.css'
+import { ImportDialog } from './ImportDialog.tsx'
 
 export type SkillManagerProps = PropsRuntime<'settings.plugins.tab'> & PropsLocale<typeof NS>
 
@@ -49,6 +50,7 @@ export function SkillManager({ t }: SkillManagerProps): JSX.Element {
   const [search, setSearch] = useState('')
   const [sourceFilter, setSourceFilter] = useState('all')
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
+  const [showImport, setShowImport] = useState(false)
 
   const filtered = useMemo(() => {
     let list = skills
@@ -94,7 +96,7 @@ export function SkillManager({ t }: SkillManagerProps): JSX.Element {
       <div className={css.actionBar}>
         <span className={css.installedLabel}>{t('installed', { n: installedCount })}</span>
         <div className={css.actionButtons}>
-          <button type="button" className={css.actionBtn} title={t('btn.import')}>{t('btn.importShort')}</button>
+          <button type="button" className={css.actionBtn} title={t('btn.import')} onClick={() => setShowImport(true)}>{t('btn.importShort')}</button>
           <button type="button" className={css.actionBtn} title={t('btn.refresh')}>↻</button>
           <button type="button" className={css.actionBtnPrimary}>{t('btn.new')}</button>
         </div>
@@ -164,6 +166,17 @@ export function SkillManager({ t }: SkillManagerProps): JSX.Element {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Import dialog */}
+      {showImport && (
+        <ImportDialog
+          t={t}
+          onClose={() => setShowImport(false)}
+          onImported={(count) => {
+            console.log(`[skill-manager] imported ${count} skills`)
+          }}
+        />
       )}
     </div>
   )
