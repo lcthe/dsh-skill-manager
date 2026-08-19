@@ -202,6 +202,29 @@
   opacity: 0.6;
 }
 
+.skillRowLinked {
+  background: rgba(77, 107, 254, 0.04);
+  border-left: 3px solid var(--dsw-alias-brand-primary, #4d6bfe);
+  padding-left: 9px;
+}
+
+.linkBadge {
+  font-size: 10px;
+  background: var(--dsw-alias-brand-primary, #4d6bfe);
+  color: #fff;
+  padding: 1px 5px;
+  border-radius: 3px;
+  margin-left: 6px;
+  vertical-align: middle;
+  font-weight: 500;
+}
+
+.linkTarget {
+  font-size: 11px;
+  color: var(--dsw-alias-brand-primary, #4d6bfe);
+  opacity: 0.7;
+}
+
 .skillActions {
   display: flex;
   align-items: center;

@@ -19,6 +19,8 @@ interface SkillInfo {
   readonly source: string
   readonly enabled: boolean
   readonly path: string
+  readonly isSymlink?: boolean
+  readonly linkTarget?: string
 }
 
 const MOCK_SKILLS: SkillInfo[] = [
@@ -28,6 +30,7 @@ const MOCK_SKILLS: SkillInfo[] = [
   { name: 'dxcms-backend-module-boundaries', description: 'Use when modifying DxCMS CMS, System, Infra, BPM, Report, or Framework modules and adding, replacing, or reviewing...', source: 'zcode', enabled: true, path: '~/.zcode/skills/dxcms-backend-module-boundaries' },
   { name: 'dxcms-freemarker', description: 'DxCMS前台Freemarker模板开发专家技能。适用场景：1. 开发DxCMS前台模板...', source: 'zcode', enabled: true, path: '~/.zcode/skills/dxcms-freemarker' },
   { name: 'dxcms-git-branch-workflow', description: '当需要处理 DxCMS 公共 dev 与 project/gxxd、project/aiStore 等多项目长期分支协作...', source: 'zcode', enabled: true, path: '~/.zcode/skills/dxcms-git-branch-workflow' },
+  { name: 'linked-skill', description: 'This skill is a symlink pointing to another location.', source: 'dsh', enabled: true, path: '~/.dsh/skills/linked-skill', isSymlink: true, linkTarget: '/Volumes/GM7/code/my-skills/linked-skill' },
   { name: 'dxcms-template-design', description: 'DxCMS前台模板设计判断技能。适用场景：1. 设计 DxCMS 首页、栏目页、内容页、专题页、会员页的页面结构和信息层级...', source: 'zcode', enabled: true, path: '~/.zcode/skills/dxcms-template-design' },
   { name: 'git-commit', description: 'Execute git commit with conventional commit message analysis, intelligent staging, and message generation.', source: 'zcode', enabled: true, path: '~/.zcode/skills/git-commit' },
   { name: 'image-to-code', description: 'Convert design images and screenshots into functional code implementations.', source: 'zcode', enabled: true, path: '~/.zcode/skills/image-to-code' },
@@ -125,14 +128,18 @@ export function SkillManager({ t }: SkillManagerProps): JSX.Element {
           </div>
         )}
         {filtered.map((skill) => (
-          <div key={skill.name} className={css.skillRow}>
-            <div className={css.skillIcon}>📋</div>
+          <div key={skill.name} className={`${css.skillRow} ${skill.isSymlink ? css.skillRowLinked : ''}`}>
+            <div className={css.skillIcon}>{skill.isSymlink ? '🔗' : '📋'}</div>
             <div className={css.skillInfo}>
-              <div className={css.skillName}>{skill.name}</div>
+              <div className={css.skillName}>
+                {skill.name}
+                {skill.isSymlink && <span className={css.linkBadge}>symlink</span>}
+              </div>
               <div className={css.skillDesc}>{skill.description}</div>
               <div className={css.skillMeta}>
                 <span className={css.skillSource}>{skill.source}</span>
                 <span className={css.skillPath}>{skill.path}</span>
+                {skill.linkTarget && <span className={css.linkTarget}>→ {skill.linkTarget}</span>}
               </div>
             </div>
             <div className={css.skillActions}>

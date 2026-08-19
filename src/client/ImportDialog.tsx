@@ -47,6 +47,7 @@ export function ImportDialog({ t, onClose, onImported }: ImportDialogProps): JSX
   const [importing, setImporting] = useState(false)
   const [target, setTarget] = useState<'global' | 'workspace'>('global')
   const [autoEnable, setAutoEnable] = useState(true)
+  const [useSymlink, setUseSymlink] = useState(false)
 
   const scan = useCallback(async (source: string) => {
     // In real implementation: const result = await host.call('skill-manager.scan', { source })
@@ -139,6 +140,10 @@ export function ImportDialog({ t, onClose, onImported }: ImportDialogProps): JSX
           <label className={css.importOption}>
             <input type="checkbox" checked={autoEnable} onChange={() => setAutoEnable(!autoEnable)} />
             {t('import.autoEnable')}
+          </label>
+          <label className={css.importOption}>
+            <input type="checkbox" checked={useSymlink} onChange={() => setUseSymlink(!useSymlink)} />
+            创建符号链接而非复制
           </label>
         </div>
 
