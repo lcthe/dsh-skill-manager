@@ -1,0 +1,4 @@
+# @lcthe/dsh-skill-manager — skill manager plugin
+- insert:
+    - id: dsh-skill-manager
+      name: '@lcthe/dsh-skill-manager'

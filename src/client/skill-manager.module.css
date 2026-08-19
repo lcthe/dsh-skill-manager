@@ -1,0 +1,337 @@
+/* Skill Manager settings tab */
+
+.root {
+  padding: 0;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+/* Header */
+.header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--dsw-alias-border-l1, rgba(128,128,128,0.2));
+}
+
+.title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--dsw-alias-label-primary, #111);
+}
+
+.subtitleRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sourceBadge {
+  font-size: 12px;
+  color: var(--dsw-alias-label-secondary, #555);
+  background: var(--dsw-alias-interactive-bg-hover, rgba(128,128,128,0.1));
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.skillCount {
+  font-size: 13px;
+  color: var(--dsw-alias-label-tertiary, #888);
+}
+
+.searchInput {
+  margin-left: auto;
+  width: 200px;
+  padding: 6px 12px;
+  border: 1px solid var(--dsw-alias-border-l2, rgba(128,128,128,0.3));
+  border-radius: 6px;
+  background: var(--dsw-alias-bg-base, #fff);
+  color: var(--dsw-alias-label-primary, #111);
+  font-size: 13px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.searchInput:focus {
+  border-color: var(--dsw-alias-brand-primary, #4d6bfe);
+}
+
+/* Action bar */
+.actionBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 20px;
+}
+
+.installedLabel {
+  font-size: 13px;
+  color: var(--dsw-alias-label-secondary, #555);
+}
+
+.actionButtons {
+  display: flex;
+  gap: 6px;
+}
+
+.actionBtn {
+  padding: 4px 10px;
+  border: 1px solid var(--dsw-alias-border-l2, rgba(128,128,128,0.3));
+  border-radius: 6px;
+  background: var(--dsw-alias-bg-base, #fff);
+  color: var(--dsw-alias-label-secondary, #555);
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+
+.actionBtn:hover {
+  background: var(--dsw-alias-interactive-bg-hover, rgba(128,128,128,0.1));
+}
+
+.actionBtnPrimary {
+  padding: 4px 10px;
+  border: 1px solid var(--dsw-alias-brand-primary, #4d6bfe);
+  border-radius: 6px;
+  background: var(--dsw-alias-brand-primary, #4d6bfe);
+  color: #fff;
+  font-size: 12px;
+  cursor: pointer;
+  transition: opacity 0.12s;
+}
+
+.actionBtnPrimary:hover {
+  opacity: 0.9;
+}
+
+/* Source filter */
+.filterRow {
+  display: flex;
+  gap: 6px;
+  padding: 8px 20px;
+  flex-wrap: wrap;
+}
+
+.filterChip {
+  padding: 3px 10px;
+  border: 1px solid var(--dsw-alias-border-l2, rgba(128,128,128,0.3));
+  border-radius: 12px;
+  background: transparent;
+  color: var(--dsw-alias-label-secondary, #555);
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.12s;
+}
+
+.filterChip:hover {
+  background: var(--dsw-alias-interactive-bg-hover, rgba(128,128,128,0.1));
+}
+
+.filterChipActive {
+  background: var(--dsw-alias-brand-primary, #4d6bfe);
+  color: #fff;
+  border-color: var(--dsw-alias-brand-primary, #4d6bfe);
+}
+
+/* Skill list */
+.skillList {
+  padding: 0 20px 16px;
+}
+
+.skillRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--dsw-alias-border-l1, rgba(128,128,128,0.15));
+}
+
+.skillRow:last-child {
+  border-bottom: none;
+}
+
+.skillIcon {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: var(--dsw-alias-bg-layer-1, rgba(128,128,128,0.05));
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.skillInfo {
+  flex: 1;
+  min-width: 0;
+}
+
+.skillName {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--dsw-alias-label-primary, #111);
+  margin-bottom: 2px;
+}
+
+.skillDesc {
+  font-size: 12px;
+  color: var(--dsw-alias-label-tertiary, #888);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.skillMeta {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+  font-size: 11px;
+  color: var(--dsw-alias-label-tertiary, #888);
+}
+
+.skillSource {
+  background: var(--dsw-alias-interactive-bg-hover, rgba(128,128,128,0.1));
+  padding: 1px 6px;
+  border-radius: 3px;
+}
+
+.skillPath {
+  opacity: 0.6;
+}
+
+.skillActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+/* Toggle switch */
+.toggle {
+  position: relative;
+  display: inline-block;
+  width: 36px;
+  height: 20px;
+}
+
+.toggle input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.toggleSlider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--dsw-alias-border-l2, rgba(128,128,128,0.4));
+  border-radius: 20px;
+  transition: background 0.2s;
+}
+
+.toggleSlider::before {
+  content: '';
+  position: absolute;
+  height: 16px;
+  width: 16px;
+  left: 2px;
+  bottom: 2px;
+  background: white;
+  border-radius: 50%;
+  transition: transform 0.2s;
+}
+
+.toggle input:checked + .toggleSlider {
+  background: var(--dsw-alias-brand-primary, #4d6bfe);
+}
+
+.toggle input:checked + .toggleSlider::before {
+  transform: translateX(16px);
+}
+
+.deleteBtn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  opacity: 0.5;
+  transition: opacity 0.12s;
+  padding: 4px;
+}
+
+.deleteBtn:hover {
+  opacity: 1;
+}
+
+/* Empty state */
+.empty {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--dsw-alias-label-tertiary, #888);
+}
+
+.emptyHint {
+  font-size: 13px;
+  margin-top: 8px;
+}
+
+/* Modal */
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modalContent {
+  background: var(--dsw-alias-bg-overlay, #fff);
+  border: 1px solid var(--dsw-alias-border-l2, rgba(128,128,128,0.3));
+  border-radius: 12px;
+  padding: 20px;
+  min-width: 300px;
+  max-width: 400px;
+  box-shadow: var(--dsw-shadow-lv2, 0 6px 18px rgba(0,0,0,0.15));
+}
+
+.modalContent p {
+  margin: 0 0 16px;
+  color: var(--dsw-alias-label-primary, #111);
+}
+
+.modalActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.modalBtn {
+  padding: 6px 14px;
+  border: 1px solid var(--dsw-alias-border-l2, rgba(128,128,128,0.3));
+  border-radius: 6px;
+  background: var(--dsw-alias-bg-base, #fff);
+  color: var(--dsw-alias-label-primary, #111);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.modalBtnDanger {
+  padding: 6px 14px;
+  border: 1px solid var(--dsw-alias-state-error-primary, #dc3545);
+  border-radius: 6px;
+  background: var(--dsw-alias-state-error-primary, #dc3545);
+  color: #fff;
+  font-size: 13px;
+  cursor: pointer;
+}
