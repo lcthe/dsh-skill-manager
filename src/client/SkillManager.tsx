@@ -3,6 +3,7 @@
  * (~/.dsh/skills, sourced through the host RPC) and opens the import dialog.
  */
 import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react'
+import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
 import type { PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 import type { NS } from './locales.ts'
 import { skillRpc, deleteSkillEndpoint, uploadSkillEndpoint, type UploadSkillFile } from './index.ts'
@@ -11,7 +12,7 @@ import { ImportDialog } from './ImportDialog.tsx'
 import { SkillDetailDialog } from './SkillDetailDialog.tsx'
 import type { ExternalSkill } from './skill-types.ts'
 
-export type SkillManagerProps = PropsRuntime<'settings.plugins.tab'> & PropsLocale<typeof NS>
+export type SkillManagerProps = PropsRuntime<'settings.section'> & PropsLocale<typeof NS>
 
 /** One skill row shown in the list (a JSON-safe slice of the host's ExternalSkill). */
 interface SkillInfo {

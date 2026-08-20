@@ -3,7 +3,7 @@ import type { LocaleDict } from '@deepseek-ai/dsh-client-locale/client'
 export const NS = 'dsh-skill-manager' as const
 
 export const zh: LocaleDict = {
-  'tab': '技能管理器',
+  'tab': '技能',
   'title': '技能',
   'loading': '加载中…',
   'subtitle': '技能 {n}',
@@ -80,7 +80,7 @@ export const zh: LocaleDict = {
 } as const
 
 export const en: LocaleDict = {
-  'tab': 'Skill Manager',
+  'tab': 'Skills',
   'title': 'Skills',
   'loading': 'Loading…',
   'subtitle': 'Skills {n}',
