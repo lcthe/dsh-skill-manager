@@ -50,7 +50,7 @@
     "clean": "node -e \"require('node:fs').rmSync('lib',{recursive:true,force:true})\"",
     "typecheck": "tsc -p tsconfig.build.json --noEmit",
     "bundle": "tsdown",
-    "build": "npm run clean && npm run typecheck && npm run bundle"
+    "build": "npm run clean && npm run bundle"
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": ">=4.0.1-rc.1",
@@ -69,6 +69,7 @@
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "tsdown": "^0.22.2",
-    "typescript": "^6.0.3"
+    "typescript": "^6.0.3",
+    "unrun": "^0.3.1"
   }
 }

@@ -1,6 +1,3 @@
-/**
- * Browser skill manager plugin: registers a settings tab for managing skills.
- */
 import type { Context } from '@deepseek-ai/cordis'
 import type {} from '@deepseek-ai/dsh-client-locale/client'
 import type {} from '@deepseek-ai/dsh-client-ui-slots/client'
@@ -9,11 +6,52 @@ import { SkillManager } from './SkillManager.tsx'
 
 export const inject = ['slots', 'locale']
 
+/** Call one `/skill-manager-api/*` host endpoint (same-origin fetch) and return its value. */
+export async function skillRpc<T>(endpoint: string, args: Record<string, unknown> = {}): Promise<T> {
+  const res = await fetch(`/skill-manager-api/${endpoint}`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(args),
+  })
+  const data = await res.json().catch(() => null)
+  if (!res.ok || !data?.ok) {
+    throw new Error(data?.error?.message ?? `skill-manager: ${endpoint} failed (${res.status})`)
+  }
+  return data.value as T
+}
+
+/** A raw base64-encoded file to be written into a new global skill directory. */
+export interface UploadSkillFile {
+  readonly path: string
+  readonly content: string
+}
+
+/** Import targets exposed by the host: the global skills root plus each workspace. */
+export interface WorkspacesResult {
+  readonly global: string
+  readonly workspaces: readonly string[]
+}
+
+/** Upload files for one new skill into ~/.dsh/skills and return the outcome. */
+export function uploadSkillEndpoint(name: string, files: readonly UploadSkillFile[], target = 'global'): Promise<{ imported: string[]; skipped: string[]; failed: { name: string; message: string }[] }> {
+  return skillRpc('upload', { name, files: files as unknown as Record<string, unknown>, target })
+}
+
+export function deleteSkillEndpoint(name: string): Promise<{ name: string; path: string; symlink: boolean }> {
+  return skillRpc('delete', { name })
+}
+
+/** Fetch the global skills root and every known workspace path. */
+export function fetchWorkspaces(): Promise<WorkspacesResult> {
+  return skillRpc<WorkspacesResult>('workspaces')
+}
+
 export function apply(ctx: Context): void {
   ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'dsh-skill-manager: dictionaries')
+  const t = ctx.locale.bind(NS)
   ctx.slots.inject('settings.plugins.tab', () =>
     ctx.slots.register(
-      { name: 'settings.plugins.tab', id: 'skill-manager', order: 30, locale: NS },
+      { name: 'settings.plugins.tab', id: 'skill-manager', order: 30, label: () => t('tab'), locale: NS },
       SkillManager,
     ),
   )

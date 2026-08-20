@@ -1,81 +1,136 @@
 /**
- * SkillManager: settings tab for browsing and managing DSH skills.
- *
- * M1: skill list with search, enable/disable toggle, delete.
- * Skills are discovered from the host via ctx.skills service.
- * The host reads from known filesystem paths.
+ * SkillManager: settings tab that lists the skills in dsh's own directory
+ * (~/.dsh/skills, sourced through the host RPC) and opens the import dialog.
  */
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react'
 import type { PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 import type { NS } from './locales.ts'
+import { skillRpc, deleteSkillEndpoint, uploadSkillEndpoint, type UploadSkillFile } from './index.ts'
 import css from './skill-manager.module.css'
 import { ImportDialog } from './ImportDialog.tsx'
+import { SkillDetailDialog } from './SkillDetailDialog.tsx'
+import type { ExternalSkill } from './skill-types.ts'
 
 export type SkillManagerProps = PropsRuntime<'settings.plugins.tab'> & PropsLocale<typeof NS>
 
+/** One skill row shown in the list (a JSON-safe slice of the host's ExternalSkill). */
 interface SkillInfo {
   readonly name: string
   readonly description: string
-  readonly source: string
   readonly enabled: boolean
   readonly path: string
+  readonly files?: readonly string[]
   readonly isSymlink?: boolean
   readonly linkTarget?: string
 }
 
-const MOCK_SKILLS: SkillInfo[] = [
-  { name: 'brainstorming', description: 'You MUST use this before any creative work – creating features, building components, adding functionality, or modifying existing code.', source: 'zcode', enabled: true, path: '~/.zcode/skills/brainstorming' },
-  { name: 'cms-dual-repo-sync', description: '当需要比较 DxCMS 与 yfy 的差异、判断某个 CMS 问题是公共 bug 还是项目定制问题...', source: 'zcode', enabled: true, path: '~/.zcode/skills/cms-dual-repo-sync' },
-  { name: 'design-taste-frontend', description: 'Anti-slop frontend skill for landing pages, portfolios, and redesigns. The agent reads the brief, infers the right design...', source: 'zcode', enabled: true, path: '~/.zcode/skills/design-taste-frontend' },
-  { name: 'dxcms-backend-module-boundaries', description: 'Use when modifying DxCMS CMS, System, Infra, BPM, Report, or Framework modules and adding, replacing, or reviewing...', source: 'zcode', enabled: true, path: '~/.zcode/skills/dxcms-backend-module-boundaries' },
-  { name: 'dxcms-freemarker', description: 'DxCMS前台Freemarker模板开发专家技能。适用场景：1. 开发DxCMS前台模板...', source: 'zcode', enabled: true, path: '~/.zcode/skills/dxcms-freemarker' },
-  { name: 'dxcms-git-branch-workflow', description: '当需要处理 DxCMS 公共 dev 与 project/gxxd、project/aiStore 等多项目长期分支协作...', source: 'zcode', enabled: true, path: '~/.zcode/skills/dxcms-git-branch-workflow' },
-  { name: 'linked-skill', description: 'This skill is a symlink pointing to another location.', source: 'dsh', enabled: true, path: '~/.dsh/skills/linked-skill', isSymlink: true, linkTarget: '/Volumes/GM7/code/my-skills/linked-skill' },
-  { name: 'dxcms-template-design', description: 'DxCMS前台模板设计判断技能。适用场景：1. 设计 DxCMS 首页、栏目页、内容页、专题页、会员页的页面结构和信息层级...', source: 'zcode', enabled: true, path: '~/.zcode/skills/dxcms-template-design' },
-  { name: 'git-commit', description: 'Execute git commit with conventional commit message analysis, intelligent staging, and message generation.', source: 'zcode', enabled: true, path: '~/.zcode/skills/git-commit' },
-  { name: 'image-to-code', description: 'Convert design images and screenshots into functional code implementations.', source: 'zcode', enabled: true, path: '~/.zcode/skills/image-to-code' },
-  { name: 'coding-agent', description: 'Best practices for writing clean, maintainable, and production-ready code.', source: 'dsh', enabled: true, path: '~/.dsh/skills/coding-agent' },
-  { name: 'data-analysis', description: 'Analyze datasets, generate insights, and create visualizations.', source: 'dsh', enabled: false, path: '~/.dsh/skills/data-analysis' },
-]
-
-const SOURCE_OPTIONS = [
-  { key: 'all', labelKey: 'source.all' },
-  { key: 'dsh', labelKey: 'source.dsh' },
-  { key: 'codex', labelKey: 'source.codex' },
-  { key: 'claude', labelKey: 'source.claude' },
-  { key: 'zcode', labelKey: 'source.zcode' },
-  { key: 'workbuddy', labelKey: 'source.workbuddy' },
-  { key: 'qcoderwork', labelKey: 'source.qcoderwork' },
-] as const
+function readAsBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => {
+      const result = String(reader.result)
+      const comma = result.indexOf(',')
+      resolve(comma >= 0 ? result.slice(comma + 1) : result)
+    }
+    reader.onerror = () => reject(reader.error)
+    reader.readAsDataURL(file)
+  })
+}
+const DSH_SOURCE = 'dsh'
 
 export function SkillManager({ t }: SkillManagerProps): JSX.Element {
-  const [skills, setSkills] = useState<SkillInfo[]>(MOCK_SKILLS)
+  const [skills, setSkills] = useState<SkillInfo[]>([])
+  const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
+  const [refreshing, setRefreshing] = useState(false)
   const [search, setSearch] = useState('')
-  const [sourceFilter, setSourceFilter] = useState('all')
-  const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
+  const [confirmDelete, setConfirmDelete] = useState<SkillInfo | null>(null)
+  const [deleting, setDeleting] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
   const [showImport, setShowImport] = useState(false)
+  const [selectedDetail, setSelectedDetail] = useState<ExternalSkill | null>(null)
+  const [uploading, setUploading] = useState(false)
+  const [uploadError, setUploadError] = useState<string | null>(null)
+  const loadInFlightRef = useRef(false)
+  const hasLoadedRef = useRef(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const load = useCallback(async () => {
+    if (loadInFlightRef.current) return
+    const initialLoad = !hasLoadedRef.current
+    loadInFlightRef.current = true
+    if (initialLoad) setLoading(true)
+    else setRefreshing(true)
+    setLoadError(null)
+    try {
+      const list = await skillRpc<Array<Omit<SkillInfo, 'enabled'>>>('scan', { source: DSH_SOURCE })
+      setSkills(list.map((s) => ({ ...s, enabled: true })))
+      hasLoadedRef.current = true
+    } catch (e) {
+      if (initialLoad) setLoadError((e as Error).message)
+    } finally {
+      loadInFlightRef.current = false
+      if (initialLoad) setLoading(false)
+      else setRefreshing(false)
+    }
+  }, [])
+
+  useEffect(() => { void load() }, [load])
 
   const filtered = useMemo(() => {
-    let list = skills
-    if (sourceFilter !== 'all') list = list.filter((s) => s.source === sourceFilter)
-    if (search.trim()) {
-      const q = search.toLowerCase()
-      list = list.filter((s) => s.name.toLowerCase().includes(q) || s.description.toLowerCase().includes(q))
-    }
-    return list
-  }, [skills, search, sourceFilter])
+    if (!search.trim()) return skills
+    const q = search.toLowerCase()
+    return skills.filter((s) => s.name.toLowerCase().includes(q) || s.description.toLowerCase().includes(q))
+  }, [skills, search])
 
   const toggleEnabled = useCallback((name: string) => {
     setSkills((prev) => prev.map((s) => s.name === name ? { ...s, enabled: !s.enabled } : s))
   }, [])
 
-  const deleteSkill = useCallback((name: string) => {
-    setSkills((prev) => prev.filter((s) => s.name !== name))
-    setConfirmDelete(null)
-  }, [])
+  const deleteSkill = useCallback(async () => {
+    if (!confirmDelete) return
+    setDeleting(true)
+    setDeleteError(null)
+    try {
+      await deleteSkillEndpoint(confirmDelete.name)
+      setConfirmDelete(null)
+      await load()
+    } catch (error) {
+      setDeleteError((error as Error).message)
+    } finally {
+      setDeleting(false)
+    }
+  }, [confirmDelete, load])
 
+  const onPickFolder = useCallback(async (event: ChangeEvent<HTMLInputElement>) => {
+    const input = event.target
+    const files = Array.from(input.files ?? [])
+    input.value = ''
+    if (files.length === 0) return
+    const top = files[0].webkitRelativePath.split('/')[0] || ''
+    if (!top) return
+    setUploading(true)
+    setUploadError(null)
+    try {
+      const entries: UploadSkillFile[] = []
+      for (const file of files) {
+        const rel = file.webkitRelativePath.split('/').slice(1).join('/')
+        if (!rel) continue
+        entries.push({ path: rel, content: await readAsBase64(file) })
+      }
+      if (entries.length === 0) return
+      const result = await uploadSkillEndpoint(top, entries, 'global')
+      if (result.failed.length > 0 && result.imported.length === 0) {
+        setUploadError(result.failed[0]?.message ?? t('upload.failed'))
+      }
+      if (result.imported.length > 0) void load()
+    } catch (error) {
+      setUploadError((error as Error).message)
+    } finally {
+      setUploading(false)
+    }
+  }, [load, t])
   const installedCount = skills.length
-  const enabledCount = skills.filter((s) => s.enabled).length
 
   return (
     <div className={css.root}>
@@ -83,7 +138,6 @@ export function SkillManager({ t }: SkillManagerProps): JSX.Element {
       <div className={css.header}>
         <h2 className={css.title}>{t('title')}</h2>
         <div className={css.subtitleRow}>
-          <span className={css.sourceBadge}>{t('source.all')}</span>
           <span className={css.skillCount}>{t('subtitle', { n: installedCount })}</span>
         </div>
         <input
@@ -99,89 +153,125 @@ export function SkillManager({ t }: SkillManagerProps): JSX.Element {
       <div className={css.actionBar}>
         <span className={css.installedLabel}>{t('installed', { n: installedCount })}</span>
         <div className={css.actionButtons}>
+          <button type="button" className={`${css.actionBtn} ${refreshing ? css.actionBtnBusy : ''}`} title={t('btn.refresh')} onClick={() => void load()} disabled={refreshing || loading}>↻</button>
           <button type="button" className={css.actionBtn} title={t('btn.import')} onClick={() => setShowImport(true)}>{t('btn.importShort')}</button>
-          <button type="button" className={css.actionBtn} title={t('btn.refresh')}>↻</button>
-          <button type="button" className={css.actionBtnPrimary}>{t('btn.new')}</button>
+          <button type="button" className={css.actionBtn} title={t('btn.upload')} onClick={() => fileInputRef.current?.click()} disabled={uploading}>
+            {uploading ? t('upload.uploading') : t('btn.upload')}
+          </button>
+          <input ref={fileInputRef} type="file" className={css.hiddenFileInput} multiple {...{ webkitdirectory: '' }} onChange={(event) => void onPickFolder(event)} />
         </div>
       </div>
 
-      {/* Source filter */}
-      <div className={css.filterRow}>
-        {SOURCE_OPTIONS.map(({ key, labelKey }) => (
-          <button
-            key={key}
-            type="button"
-            className={`${css.filterChip} ${sourceFilter === key ? css.filterChipActive : ''}`}
-            onClick={() => setSourceFilter(key)}
-          >
-            {t(labelKey)}
-          </button>
-        ))}
-      </div>
+      {uploadError && <div className={css.uploadError} role="alert">{uploadError}</div>}
+
+      {deleteError && <div className={css.uploadError} role="alert">{deleteError}</div>}
+
+      {loading && <div className={css.empty}>{t('loading')}</div>}
+      {!loading && loadError && <div className={css.empty}>{loadError}</div>}
 
       {/* Skill list */}
-      <div className={css.skillList}>
-        {filtered.length === 0 && (
-          <div className={css.empty}>
-            <p>{t('empty')}</p>
-            <p className={css.emptyHint}>{t('empty.import')}</p>
-          </div>
-        )}
-        {filtered.map((skill) => (
-          <div key={skill.name} className={`${css.skillRow} ${skill.isSymlink ? css.skillRowLinked : ''}`}>
-            <div className={css.skillIcon}>{skill.isSymlink ? '🔗' : '📋'}</div>
-            <div className={css.skillInfo}>
-              <div className={css.skillName}>
-                {skill.name}
-                {skill.isSymlink && <span className={css.linkBadge}>symlink</span>}
-              </div>
-              <div className={css.skillDesc}>{skill.description}</div>
-              <div className={css.skillMeta}>
-                <span className={css.skillSource}>{skill.source}</span>
-                <span className={css.skillPath}>{skill.path}</span>
-                {skill.linkTarget && <span className={css.linkTarget}>→ {skill.linkTarget}</span>}
-              </div>
+      {!loading && !loadError && (
+        <div className={css.skillList}>
+          {filtered.length === 0 && (
+            <div className={css.empty}>
+              <p>{t('empty')}</p>
+              <p className={css.emptyHint}>{t('empty.import')}</p>
             </div>
-            <div className={css.skillActions}>
-              <label className={css.toggle}>
-                <input
-                  type="checkbox"
-                  checked={skill.enabled}
-                  onChange={() => toggleEnabled(skill.name)}
-                />
-                <span className={css.toggleSlider} />
-              </label>
+          )}
+          {filtered.map((skill) => (
+            <div key={skill.name} className={css.skillRow}>
               <button
                 type="button"
-                className={css.deleteBtn}
-                onClick={() => setConfirmDelete(skill.name)}
-                title={t('btn.delete')}
-              >🗑</button>
+                className={css.skillInfoButton}
+                onClick={() => setSelectedDetail({
+                  name: skill.name,
+                  description: skill.description,
+                  source: DSH_SOURCE,
+                  path: skill.path,
+                  files: skill.files ?? ['SKILL.md'],
+                  isSymlink: skill.isSymlink,
+                  linkTarget: skill.linkTarget,
+                })}
+              >
+                <div className={css.skillInfo}>
+                  <div className={css.skillName}>
+                    {skill.name}
+                    {skill.isSymlink && <span className={css.linkBadge}>symlink</span>}
+                  </div>
+                  <div className={css.skillDesc}>{skill.description}</div>
+                  <div className={css.skillMeta}>
+                    <span className={css.skillPath}>{skill.path}</span>
+                    {skill.linkTarget && <span className={css.linkTarget}>→ {skill.linkTarget}</span>}
+                  </div>
+                </div>
+              </button>
+              <div className={css.skillActions}>
+                <label className={css.toggle}>
+                  <input type="checkbox" checked={skill.enabled} onChange={(event) => {
+                    event.stopPropagation()
+                    toggleEnabled(skill.name)
+                  }} />
+                  <span className={css.toggleSlider} />
+                </label>
+                <button
+                  type="button"
+                  className={css.deleteBtn}
+                  onClick={(event) => {
+                    event.stopPropagation()
+                    setConfirmDelete(skill)
+                  }}
+                  title={t('btn.delete')}
+                >{t('btn.delete')}</button>
+              </div>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
 
       {/* Delete confirmation */}
       {confirmDelete && (
-        <div className={css.modal}>
-          <div className={css.modalContent}>
-            <p>{t('confirm.delete', { name: confirmDelete })}</p>
-            <div className={css.modalActions}>
-              <button type="button" className={css.modalBtn} onClick={() => setConfirmDelete(null)}>{t('btn.cancel')}</button>
-              <button type="button" className={css.modalBtnDanger} onClick={() => deleteSkill(confirmDelete)}>{t('btn.confirm')}</button>
+        <div className={css.modal} role="presentation">
+          <section className={css.confirmDialog} role="alertdialog" aria-modal="true" aria-labelledby="delete-skill-title" aria-describedby="delete-skill-description">
+            <header className={css.confirmHeader}>
+              <div>
+                <h3 id="delete-skill-title">{t('delete.title')}</h3>
+                <p id="delete-skill-description">{t('delete.message', { name: confirmDelete.name })}</p>
+              </div>
+              <button type="button" className={css.iconButton} aria-label={t('btn.cancel')} onClick={() => setConfirmDelete(null)} disabled={deleting}>×</button>
+            </header>
+            <div className={css.confirmBody}>
+              <div className={css.confirmSkillName}>{confirmDelete.name}</div>
+              <div className={css.confirmPath}>{confirmDelete.path}</div>
+              <div className={css.confirmWarning}>
+                {confirmDelete.isSymlink ? t('delete.symlinkWarning') : t('delete.directoryWarning')}
+              </div>
+              {deleteError && <div className={css.confirmError} role="alert">{deleteError}</div>}
             </div>
-          </div>
+            <footer className={css.confirmFooter}>
+              <button type="button" className={css.modalBtn} onClick={() => setConfirmDelete(null)} disabled={deleting}>{t('btn.cancel')}</button>
+              <button type="button" className={css.modalBtnDanger} onClick={() => void deleteSkill()} disabled={deleting}>
+                {deleting ? t('delete.deleting') : t('btn.confirm')}
+              </button>
+            </footer>
+          </section>
         </div>
       )}
 
       {/* Import dialog */}
+      {selectedDetail && (
+        <SkillDetailDialog
+          skill={selectedDetail}
+          sourceLabel={t('source.dsh')}
+          t={t}
+          onClose={() => setSelectedDetail(null)}
+        />
+      )}
       {showImport && (
         <ImportDialog
           t={t}
           onClose={() => setShowImport(false)}
-          onImported={(count) => {
-            console.log(`[skill-manager] imported ${count} skills`)
+          onImported={() => {
+            void load()
           }}
         />
       )}
