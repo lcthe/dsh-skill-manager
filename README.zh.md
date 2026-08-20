@@ -1,4 +1,4 @@
-# dsh-skill-manager
+# dsh-skills-hub
 
 DSH Skill Manager — 集中管理所有 AI Agent 的 Skills
 

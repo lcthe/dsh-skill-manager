@@ -1,4 +1,4 @@
-# @lcthe/dsh-skill-manager — skill manager plugin
+# @lcthe/dsh-skills-hub — skill manager plugin
 - insert:
-    - id: dsh-skill-manager
-      name: '@lcthe/dsh-skill-manager'
+    - id: dsh-skills-hub
+      name: '@lcthe/dsh-skills-hub'
