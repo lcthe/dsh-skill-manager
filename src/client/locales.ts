@@ -1,4 +1,5 @@
 import type { LocaleDict } from '@deepseek-ai/dsh-client-locale/client'
+import type {} from '@deepseek-ai/dsh-client-ui-slots'
 
 export const NS = 'dsh-skills-hub' as const
 
@@ -9,20 +10,15 @@ export const zh: LocaleDict = {
   'subtitle': '技能 {n}',
   'installed': '已安装 {n}',
   'searchPlaceholder': '搜索技能...',
-  'btn.more': '…',
   'btn.refresh': '刷新',
-  'btn.new': '+ 新建',
   'btn.import': '导入',
   'btn.importShort': '导入',
   'btn.upload': '上传',
   'upload.uploading': '上传中…',
   'upload.failed': '上传失败',
-  'btn.enable': '启用',
-  'btn.disable': '禁用',
   'btn.delete': '删除',
   'btn.cancel': '取消',
   'btn.confirm': '确认',
-  'btn.open': '打开',
   'delete.title': '删除技能',
   'delete.message': '确定要删除这个技能吗？此操作不可撤销。',
   'delete.directoryWarning': '将删除该技能目录及其中的所有文件。',
@@ -73,12 +69,19 @@ export const zh: LocaleDict = {
   'import.select': '选择要导入的 skills:',
   'import.target': '目标路径:',
   'import.targetGlobal': '全局 (~/.dsh/skills/)',
-  'import.targetWorkspace': '当前工作区',
-  'import.autoEnable': '导入后自动启用',
+  'import.targetWorkspace': '已注册工作区',
   'import.selected': '导入 {n} 个',
   'empty': '暂无技能',
   'empty.import': '点击「导入」从其他 Agent 平台导入 skills',
 } as const
+
+export type SkillHubLocaleKey = keyof typeof zh
+
+declare module '@deepseek-ai/dsh-client-ui-slots' {
+  interface LocaleNamespaceMap {
+    'dsh-skills-hub': SkillHubLocaleKey
+  }
+}
 
 export const en: LocaleDict = {
   'tab': 'Skills',
@@ -87,20 +90,15 @@ export const en: LocaleDict = {
   'subtitle': 'Skills {n}',
   'installed': '{n} installed',
   'searchPlaceholder': 'Search skills...',
-  'btn.more': '…',
   'btn.refresh': 'Refresh',
-  'btn.new': '+ New',
   'btn.import': 'Import',
   'btn.importShort': 'Import',
   'btn.upload': 'Upload',
   'upload.uploading': 'Uploading…',
   'upload.failed': 'Upload failed',
-  'btn.enable': 'Enable',
-  'btn.disable': 'Disable',
   'btn.delete': 'Delete',
   'btn.cancel': 'Cancel',
   'btn.confirm': 'Confirm',
-  'btn.open': 'Open',
   'delete.title': 'Delete skill',
   'delete.message': 'Are you sure you want to delete this skill? This cannot be undone.',
   'delete.directoryWarning': 'The skill directory and all of its files will be removed.',
@@ -151,8 +149,7 @@ export const en: LocaleDict = {
   'import.select': 'Select skills to import:',
   'import.target': 'Target:',
   'import.targetGlobal': 'Global (~/.dsh/skills/)',
-  'import.targetWorkspace': 'Current workspace',
-  'import.autoEnable': 'Auto-enable after import',
+  'import.targetWorkspace': 'Registered workspace',
   'import.selected': 'Import {n}',
   'empty': 'No skills found',
   'empty.import': 'Click "Import" to import skills from other agent platforms',

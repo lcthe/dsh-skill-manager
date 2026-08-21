@@ -6,14 +6,15 @@ DSH Skill Manager — 集中管理所有 AI Agent 的 Skills
 
 ## 🎯 项目目标
 
-为 DeepSeek Harness (DSH) 提供一个**统一的 Skill 管理界面**,让用户可以在一个地方查看、启用/禁用、删除、导入来自不同 Agent 平台(DSH、Codex、ZCode 等)的 Skills。
+为 DeepSeek Harness (DSH) 提供一个浏览器设置页面，用于浏览、搜索、查看详情、导入、上传和安全删除 skills。范围选择器可以在全局 skills 目录和已注册工作区之间切换。
 
 ## ✨ 核心功能
 
-- **Skill 浏览器**:列表展示所有已发现的 skills,支持搜索过滤
-- **一键操作**:启用/禁用、删除、打开文件夹、编辑
-- **跨平台导入**:从 Codex、ZCode 等平台一键导入 skills
-- **自动发现**:扫描全局/工作区/符号链接的 skills
+- **Skill 浏览器**：列表展示已安装的 skills，支持搜索和详情查看
+- **安全删除**：删除技能目录或软链接，软链接目标不会被删除
+- **跨平台导入**：从 Codex、Claude Code、ZCode、WorkBuddy 和 QCoderWork 导入 skills
+- **本地上传**：将本地技能文件夹上传到全局或已注册工作区
+- **范围选择**：在全局 skills 目录和已注册工作区之间切换
 
 ### 截图
 

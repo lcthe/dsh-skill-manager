@@ -1,7 +1,7 @@
 import type { Context } from '@deepseek-ai/cordis'
 import type {} from '@deepseek-ai/dsh-client-locale/client'
 import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
-import type {} from '@deepseek-ai/dsh-client-ui-slots/client'
+import type {} from '@deepseek-ai/dsh-client-ui-slots'
 import { en, NS, zh } from './locales.ts'
 import { SkillManager } from './SkillManager.tsx'
 

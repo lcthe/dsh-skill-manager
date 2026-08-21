@@ -58,19 +58,23 @@ export function ImportDialog({ t, onClose, onImported }: ImportDialogProps): JSX
     const initialLoad = !hasLoadedSourcesRef.current
     detectInFlightRef.current = true
     if (initialLoad) setLoadingSources(true)
-    else setRefreshing(true)
+    else {
+      setRefreshing(true)
+      setExpandedSources(new Set())
+      setScanned({})
+      setScanning({})
+      setFailedSources(new Set())
+      setSelected(new Set())
+      setImportResult(null)
+    }
     try {
       const result = await skillRpc<{ sources: SourceInfo[] }>('detect')
       const detected = (result.sources ?? []).filter((source) => source.key !== 'dsh')
-      const entries = await Promise.all(detected.map(async (source) => {
-        try {
-          return [source.key, await skillRpc<ExternalSkill[]>('scan', { source: source.key })] as const
-        } catch {
-          return [source.key, []] as const
-        }
-      }))
       setSources(detected)
-      setScanned(Object.fromEntries(entries))
+      setScanned({})
+      setExpandedSources(new Set())
+      setSelected(new Set())
+      setScanning({})
       setFailedSources(new Set())
       setImportResult(null)
       hasLoadedSourcesRef.current = true
@@ -94,6 +98,11 @@ export function ImportDialog({ t, onClose, onImported }: ImportDialogProps): JSX
   const scanSource = useCallback(async (source: string) => {
     if (scanned[source] !== undefined || scanning[source]) return
     setScanning((prev) => ({ ...prev, [source]: true }))
+    setFailedSources((prev) => {
+      const next = new Set(prev)
+      next.delete(source)
+      return next
+    })
     try {
       const list = await skillRpc<ExternalSkill[]>('scan', { source })
       setScanned((prev) => ({ ...prev, [source]: list }))
@@ -170,7 +179,7 @@ export function ImportDialog({ t, onClose, onImported }: ImportDialogProps): JSX
       })
       setImportResult(result)
       setSelected(new Set())
-      if (result.imported.length > 0) onImported(result.imported.length)
+      onImported(result.imported.length)
     } catch (error) {
       setImportResult({ imported: [], skipped: [], failed: [{ name: '', message: (error as Error).message }] })
     } finally {
@@ -193,7 +202,9 @@ export function ImportDialog({ t, onClose, onImported }: ImportDialogProps): JSX
         <header className={css.importHeader}>
           <h3 id="skill-import-title">{t('import.title')}</h3>
           <div className={css.importHeaderActions}>
-            <span className={css.importScope}>{t('import.scopeAll')}</span>
+            <span className={css.importScope}>
+              {target === 'global' ? t('import.globalTarget') : target}
+            </span>
             <button
               type="button"
               className={`${css.iconButton} ${refreshing ? css.iconButtonBusy : ''}`}

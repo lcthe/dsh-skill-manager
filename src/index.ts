@@ -8,11 +8,15 @@
 import { homedir } from 'node:os'
 import { dirname, join } from 'node:path'
 import type { IncomingMessage, ServerResponse } from 'node:http'
-import { existsSync, cpSync, lstatSync, mkdirSync, readFileSync, readdirSync, readlinkSync, rmSync, statSync, symlinkSync, unlinkSync, writeFileSync } from 'node:fs'
+import { existsSync, cpSync, lstatSync, mkdirSync, readFileSync, readdirSync, readlinkSync, renameSync, rmSync, statSync, symlinkSync, unlinkSync, writeFileSync } from 'node:fs'
 import type { Context } from '@deepseek-ai/cordis'
 import type {} from '@deepseek-ai/dsh-workspace'
 
-/** A skill discovered on disk. Plain JSON so it crosses the HTTP boundary. */
+const MAX_BODY_BYTES = 16 * 1024 * 1024
+const MAX_UPLOAD_FILES = 500
+const MAX_UPLOAD_FILE_BYTES = 4 * 1024 * 1024
+const MAX_UPLOAD_TOTAL_BYTES = 12 * 1024 * 1024
+
 export interface ExternalSkill {
   readonly name: string
   readonly description: string
@@ -197,33 +201,71 @@ function normalizeUploadPath(rel: string): string | null {
   return join(...segments)
 }
 
-/** Write files uploaded from the browser into a fresh global skill directory. */
+function isBase64(content: string): boolean {
+  if (content.length === 0 || content.length % 4 !== 0 || !/^[A-Za-z0-9+/]*={0,2}$/.test(content)) return false
+  try {
+    return Buffer.from(content, 'base64').toString('base64').replace(/=+$/, '') === content.replace(/=+$/, '')
+  } catch {
+    return false
+  }
+}
+
+/** Write a browser upload into a temporary directory and commit it atomically. */
 function importUploadedSkill(name: unknown, files: unknown, destinationRoot: string): ImportResult {
   const failed: { name: string; message: string }[] = []
   if (typeof name !== 'string' || !/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(name)) {
     return { imported: [], skipped: [], failed: [{ name: String(name ?? ''), message: 'invalid skill name' }] }
   }
-  if (!Array.isArray(files) || files.length === 0 || files.length > 500) {
-    return { imported: [], skipped: [], failed: [{ name, message: 'no files provided' }] }
+  if (!Array.isArray(files) || files.length === 0 || files.length > MAX_UPLOAD_FILES) {
+    return { imported: [], skipped: [], failed: [{ name, message: 'invalid upload file count' }] }
   }
   mkdirSync(destinationRoot, { recursive: true })
   const destination = join(destinationRoot, name)
   if (existsSync(destination)) return { imported: [], skipped: [name], failed: [] }
+  const tempDirectory = join(destinationRoot, `.${name}.upload-${process.pid}-${Date.now()}`)
+  let validFiles = 0
+  let totalBytes = 0
   try {
+    mkdirSync(tempDirectory, { recursive: true })
     for (const item of files) {
-      if (typeof item !== 'object' || item === null) continue
+      if (typeof item !== 'object' || item === null) {
+        failed.push({ name, message: 'invalid upload file' })
+        continue
+      }
       const { path: rel, content } = item as Record<string, unknown>
-      if (typeof rel !== 'string' || typeof content !== 'string') continue
+      if (typeof rel !== 'string' || typeof content !== 'string') {
+        failed.push({ name, message: 'invalid upload file' })
+        continue
+      }
       const safe = normalizeUploadPath(rel)
-      if (safe === null) continue
-      const target = join(destination, safe)
-      if (target !== destination && !target.startsWith(`${destination}/`)) continue
+      if (safe === null || !isBase64(content)) {
+        failed.push({ name, message: `invalid upload file: ${rel}` })
+        continue
+      }
+      const bytes = Buffer.from(content, 'base64')
+      if (bytes.length > MAX_UPLOAD_FILE_BYTES || totalBytes + bytes.length > MAX_UPLOAD_TOTAL_BYTES) {
+        failed.push({ name, message: `upload exceeds size limit: ${rel}` })
+        continue
+      }
+      const target = join(tempDirectory, safe)
+      if (target !== tempDirectory && !target.startsWith(`${tempDirectory}/`)) {
+        failed.push({ name, message: `invalid upload path: ${rel}` })
+        continue
+      }
       mkdirSync(dirname(target), { recursive: true })
-      writeFileSync(target, Buffer.from(content, 'base64'))
+      writeFileSync(target, bytes, { flag: 'wx' })
+      validFiles += 1
+      totalBytes += bytes.length
     }
-    return { imported: [name], skipped: [], failed }
+    if (validFiles === 0 || failed.length > 0) {
+      return { imported: [], skipped: [], failed: failed.length > 0 ? failed : [{ name, message: 'no valid files provided' }] }
+    }
+    renameSync(tempDirectory, destination)
+    return { imported: [name], skipped: [], failed: [] }
   } catch (error) {
     return { imported: [], skipped: [], failed: [{ name, message: error instanceof Error ? error.message : String(error) }] }
+  } finally {
+    if (existsSync(tempDirectory)) rmSync(tempDirectory, { recursive: true, force: true })
   }
 }
 
@@ -263,10 +305,16 @@ function send(res: ServerResponse, status: number, body: unknown): void {
 function readBody(req: IncomingMessage): Promise<Record<string, unknown>> {
   return new Promise((resolve) => {
     let raw = ''
-    req.on('data', (chunk: Buffer) => { raw += chunk.toString() })
+    let tooLarge = false
+    req.on('data', (chunk: Buffer) => {
+      if (tooLarge) return
+      raw += chunk.toString()
+      if (Buffer.byteLength(raw) > MAX_BODY_BYTES) tooLarge = true
+    })
     req.on('end', () => {
+      if (tooLarge) return resolve({ __bodyError: 'request body too large' })
       if (!raw) return resolve({})
-      try { resolve(JSON.parse(raw)) } catch { resolve({}) }
+      try { resolve(JSON.parse(raw)) } catch { resolve({ __bodyError: 'malformed JSON body' }) }
     })
   })
 }
@@ -285,6 +333,7 @@ export function apply(ctx: Context): void {
       const parts = (req.url ?? '').split('?')[0].split('/').filter(Boolean)
       const endpoint = parts[parts.length - 1]
       const body = await readBody(req)
+      if (typeof body.__bodyError === 'string') return send(res, 400, { ok: false, error: { message: body.__bodyError } })
       try {
         if (endpoint === 'detect') {
           return send(res, 200, { ok: true, value: { sources: detectSources() } })

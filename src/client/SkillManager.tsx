@@ -19,7 +19,6 @@ export type SkillManagerProps = PropsRuntime<'settings.section'> & PropsLocale<t
 interface SkillInfo {
   readonly name: string
   readonly description: string
-  readonly enabled: boolean
   readonly path: string
   readonly files?: readonly string[]
   readonly isSymlink?: boolean
@@ -73,7 +72,7 @@ export function SkillManager({ t }: SkillManagerProps): JSX.Element {
         target,
       })
       if (requestId !== loadRequestRef.current) return
-      setSkills(list.map((s) => ({ ...s, enabled: true })))
+      setSkills(list)
       hasLoadedRef.current = true
     } catch (e) {
       if (requestId === loadRequestRef.current && initialLoad) setLoadError((e as Error).message)
@@ -103,10 +102,6 @@ export function SkillManager({ t }: SkillManagerProps): JSX.Element {
     const q = search.toLowerCase()
     return skills.filter((s) => s.name.toLowerCase().includes(q) || s.description.toLowerCase().includes(q))
   }, [skills, search])
-
-  const toggleEnabled = useCallback((name: string) => {
-    setSkills((prev) => prev.map((s) => s.name === name ? { ...s, enabled: !s.enabled } : s))
-  }, [])
 
   const deleteSkill = useCallback(async () => {
     if (!confirmDelete) return
@@ -238,13 +233,6 @@ export function SkillManager({ t }: SkillManagerProps): JSX.Element {
                 </div>
               </button>
               <div className={css.skillActions}>
-                <label className={css.toggle}>
-                  <input type="checkbox" checked={skill.enabled} onChange={(event) => {
-                    event.stopPropagation()
-                    toggleEnabled(skill.name)
-                  }} />
-                  <span className={css.toggleSlider} />
-                </label>
                 <button
                   type="button"
                   className={css.deleteBtn}
