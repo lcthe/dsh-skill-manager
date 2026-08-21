@@ -15,6 +15,14 @@ DSH Skill Manager — 集中管理所有 AI Agent 的 Skills
 - **跨平台导入**:从 Codex、ZCode 等平台一键导入 skills
 - **自动发现**:扫描全局/工作区/符号链接的 skills
 
+### Screenshots
+
+![Skill List](docs/1.png)
+
+![Import Dialog](docs/2.png)
+
+![Source Selection](docs/3.png)
+
 ## 📐 需求规格
 
 详见 [SPEC.md](SPEC.md)
