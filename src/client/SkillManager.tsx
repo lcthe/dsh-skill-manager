@@ -6,7 +6,8 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } f
 import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
 import type { PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 import type { NS } from './locales.ts'
-import { skillRpc, deleteSkillEndpoint, uploadSkillEndpoint, type UploadSkillFile } from './index.ts'
+import { skillRpc, deleteSkillEndpoint, fetchWorkspaces, uploadSkillEndpoint, type UploadSkillFile } from './index.ts'
+import { DshDropdown } from './DshDropdown.tsx'
 import css from './skill-manager.module.css'
 import { ImportDialog } from './ImportDialog.tsx'
 import { SkillDetailDialog } from './SkillDetailDialog.tsx'
@@ -38,6 +39,7 @@ function readAsBase64(file: File): Promise<string> {
   })
 }
 const DSH_SOURCE = 'dsh'
+const GLOBAL_TARGET = 'global'
 
 export function SkillManager({ t }: SkillManagerProps): JSX.Element {
   const [skills, setSkills] = useState<SkillInfo[]>([])
@@ -52,31 +54,49 @@ export function SkillManager({ t }: SkillManagerProps): JSX.Element {
   const [selectedDetail, setSelectedDetail] = useState<ExternalSkill | null>(null)
   const [uploading, setUploading] = useState(false)
   const [uploadError, setUploadError] = useState<string | null>(null)
-  const loadInFlightRef = useRef(false)
+  const [workspacePaths, setWorkspacePaths] = useState<readonly string[]>([])
+  const [target, setTarget] = useState(GLOBAL_TARGET)
+  const loadRequestRef = useRef(0)
   const hasLoadedRef = useRef(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const load = useCallback(async () => {
-    if (loadInFlightRef.current) return
+    const requestId = loadRequestRef.current + 1
+    loadRequestRef.current = requestId
     const initialLoad = !hasLoadedRef.current
-    loadInFlightRef.current = true
     if (initialLoad) setLoading(true)
     else setRefreshing(true)
     setLoadError(null)
     try {
-      const list = await skillRpc<Array<Omit<SkillInfo, 'enabled'>>>('scan', { source: DSH_SOURCE })
+      const list = await skillRpc<Array<Omit<SkillInfo, 'enabled'>>>('scan', {
+        source: DSH_SOURCE,
+        target,
+      })
+      if (requestId !== loadRequestRef.current) return
       setSkills(list.map((s) => ({ ...s, enabled: true })))
       hasLoadedRef.current = true
     } catch (e) {
-      if (initialLoad) setLoadError((e as Error).message)
+      if (requestId === loadRequestRef.current && initialLoad) setLoadError((e as Error).message)
     } finally {
-      loadInFlightRef.current = false
-      if (initialLoad) setLoading(false)
-      else setRefreshing(false)
+      if (requestId === loadRequestRef.current) {
+        setLoading(false)
+        setRefreshing(false)
+      }
     }
-  }, [])
+  }, [target])
 
   useEffect(() => { void load() }, [load])
+
+  useEffect(() => {
+    void fetchWorkspaces()
+      .then((result) => setWorkspacePaths(result.workspaces ?? []))
+      .catch(() => setWorkspacePaths([]))
+  }, [])
+
+  const workspaceOptions = useMemo(() => [
+    { value: GLOBAL_TARGET, label: t('scope.global') },
+    ...workspacePaths.map((path) => ({ value: path, label: path })),
+  ], [t, workspacePaths])
 
   const filtered = useMemo(() => {
     if (!search.trim()) return skills
@@ -93,7 +113,7 @@ export function SkillManager({ t }: SkillManagerProps): JSX.Element {
     setDeleting(true)
     setDeleteError(null)
     try {
-      await deleteSkillEndpoint(confirmDelete.name)
+      await deleteSkillEndpoint(confirmDelete.name, target)
       setConfirmDelete(null)
       await load()
     } catch (error) {
@@ -101,7 +121,7 @@ export function SkillManager({ t }: SkillManagerProps): JSX.Element {
     } finally {
       setDeleting(false)
     }
-  }, [confirmDelete, load])
+  }, [confirmDelete, load, target])
 
   const onPickFolder = useCallback(async (event: ChangeEvent<HTMLInputElement>) => {
     const input = event.target
@@ -120,7 +140,7 @@ export function SkillManager({ t }: SkillManagerProps): JSX.Element {
         entries.push({ path: rel, content: await readAsBase64(file) })
       }
       if (entries.length === 0) return
-      const result = await uploadSkillEndpoint(top, entries, 'global')
+      const result = await uploadSkillEndpoint(top, entries, target)
       if (result.failed.length > 0 && result.imported.length === 0) {
         setUploadError(result.failed[0]?.message ?? t('upload.failed'))
       }
@@ -130,7 +150,7 @@ export function SkillManager({ t }: SkillManagerProps): JSX.Element {
     } finally {
       setUploading(false)
     }
-  }, [load, t])
+  }, [load, t, target])
   const installedCount = skills.length
 
   return (
@@ -139,15 +159,26 @@ export function SkillManager({ t }: SkillManagerProps): JSX.Element {
       <div className={css.header}>
         <h2 className={css.title}>{t('title')}</h2>
         <div className={css.subtitleRow}>
+          <DshDropdown
+            value={target}
+            options={workspaceOptions}
+            onChange={(value) => {
+              hasLoadedRef.current = false
+              setSkills([])
+              setTarget(value)
+            }}
+            ariaLabel={t('scope.label')}
+            className={css.dshDropdownScope}
+          />
           <span className={css.skillCount}>{t('subtitle', { n: installedCount })}</span>
+          <input
+            type="text"
+            className={css.searchInput}
+            placeholder={t('searchPlaceholder')}
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
         </div>
-        <input
-          type="text"
-          className={css.searchInput}
-          placeholder={t('searchPlaceholder')}
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
       </div>
 
       {/* Action bar */}

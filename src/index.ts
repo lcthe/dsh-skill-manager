@@ -227,13 +227,12 @@ function importUploadedSkill(name: unknown, files: unknown, destinationRoot: str
   }
 }
 
-function deleteSkill(name: unknown): { name: string; path?: string; symlink?: boolean; error?: string } {
+function deleteSkill(name: unknown, destinationRoot: string): { name: string; path?: string; symlink?: boolean; error?: string } {
   if (typeof name !== 'string' || !/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(name)) {
     return { name: String(name ?? ''), error: 'invalid skill name' }
   }
-  const root = join(homedir(), '.dsh', 'skills')
-  const target = join(root, name)
-  if (!target.startsWith(`${root}/`) || target === root) return { name, error: 'invalid skill path' }
+  const target = join(destinationRoot, name)
+  if (!target.startsWith(`${destinationRoot}/`) || target === destinationRoot) return { name, error: 'invalid skill path' }
   if (!existsSync(target)) return { name, path: target, error: 'skill does not exist' }
   try {
     const stat = lstatSync(target)
@@ -292,6 +291,13 @@ export function apply(ctx: Context): void {
         }
         if (endpoint === 'scan') {
           const source = typeof body.source === 'string' ? body.source : ''
+          const target = body.target
+          if (source === 'dsh' && target !== undefined) {
+            const workspaces = ctx.workspaceRegistry.list().map((workspace) => workspace.path)
+            const resolved = resolveDestinationRoot(target, workspaces)
+            if ('error' in resolved) return send(res, 400, { ok: false, error: { message: resolved.error } })
+            return send(res, 200, { ok: true, value: scanSkillDir(resolved.root, source) })
+          }
           return send(res, 200, { ok: true, value: scanSource(source) })
         }
         if (endpoint === 'workspaces') {
@@ -299,7 +305,10 @@ export function apply(ctx: Context): void {
           return send(res, 200, { ok: true, value: { global: join(homedir(), '.dsh', 'skills'), workspaces } })
         }
         if (endpoint === 'delete') {
-          const result = deleteSkill(body.name)
+          const workspaces = ctx.workspaceRegistry.list().map((workspace) => workspace.path)
+          const resolved = resolveDestinationRoot(body.target, workspaces)
+          if ('error' in resolved) return send(res, 400, { ok: false, error: { message: resolved.error } })
+          const result = deleteSkill(body.name, resolved.root)
           if (result.error) return send(res, 400, { ok: false, error: { message: result.error } })
           return send(res, 200, { ok: true, value: result })
         }

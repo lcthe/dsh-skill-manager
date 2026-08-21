@@ -38,8 +38,8 @@ export function uploadSkillEndpoint(name: string, files: readonly UploadSkillFil
   return skillRpc('upload', { name, files: files as unknown as Record<string, unknown>, target })
 }
 
-export function deleteSkillEndpoint(name: string): Promise<{ name: string; path: string; symlink: boolean }> {
-  return skillRpc('delete', { name })
+export function deleteSkillEndpoint(name: string, target = 'global'): Promise<{ name: string; path: string; symlink: boolean }> {
+  return skillRpc('delete', { name, target })
 }
 
 /** Fetch the global skills root and every known workspace path. */

@@ -8,10 +8,9 @@
 
 /* Header */
 .header {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 16px 20px;
+  display: grid;
+  gap: 10px;
+  padding: 16px 20px 14px;
   border-bottom: 1px solid var(--dsw-alias-border-l1, rgba(128,128,128,0.2));
 }
 
@@ -24,8 +23,31 @@
 
 .subtitleRow {
   display: flex;
+  position: relative;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
+  min-width: 0;
+}
+
+.dshDropdownScope {
+  width: 78px;
+  flex: 0 0 auto;
+  overflow: visible;
+}
+
+.dshDropdownScope .dshDropdownMenu {
+  top: calc(100% + 8px);
+  bottom: auto;
+  left: 0;
+  right: auto;
+  min-width: 280px;
+  max-width: min(520px, calc(100vw - 32px));
+}
+
+.dshDropdownScope .dshDropdownOptionLabel {
+  overflow: visible;
+  text-overflow: clip;
+  white-space: nowrap;
 }
 
 .sourceBadge {
