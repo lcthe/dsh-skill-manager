@@ -1,7 +1,7 @@
 /**
- * Host loader entry for the skill-manager plugin. The browser client scans the
+ * Host loader entry for the dsh-skills-hub plugin. The browser client scans the
  * host's home directory by calling my own HTTP endpoints under
- * /skill-manager-api (registered on the shared webServer): `detect` reports
+ * /dsh-skills-hub-api (registered on the shared webServer): `detect` reports
  * which agent config directories actually exist, and `scan` returns the skill
  * directories under one source.
  */
@@ -274,7 +274,7 @@ function readBody(req: IncomingMessage): Promise<Record<string, unknown>> {
 
 export const inject = ['webServer', 'workspaceRegistry']
 
-const API_BASE = '/skill-manager-api'
+const API_BASE = '/dsh-skills-hub-api'
 
 /** Register the detect/scan JSON endpoints on the shared webServer. */
 export function apply(ctx: Context): void {
@@ -317,5 +317,5 @@ export function apply(ctx: Context): void {
         send(res, 500, { ok: false, error: { message: String(error) } })
       }
     },
-  }), 'skill-manager: api routes')
+  }), 'dsh-skills-hub: api routes')
 }

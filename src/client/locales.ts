@@ -1,6 +1,6 @@
 import type { LocaleDict } from '@deepseek-ai/dsh-client-locale/client'
 
-export const NS = 'dsh-skill-manager' as const
+export const NS = 'dsh-skills-hub' as const
 
 export const zh: LocaleDict = {
   'tab': '技能',

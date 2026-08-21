@@ -3,7 +3,7 @@ import { basename, dirname } from 'node:path'
 import { defineConfig, type UserConfig } from 'tsdown'
 import { transform } from 'lightningcss'
 
-const ID = '@lcthe/dsh-skill-manager'
+const ID = '@lcthe/dsh-skills-hub'
 const CSS_VIRTUAL_PREFIX = '\0dsh-css:'
 const CSS_VIRTUAL_SUFFIX = '.mjs'
 const PLATFORM_MODULES = [

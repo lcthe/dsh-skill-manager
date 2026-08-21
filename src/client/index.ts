@@ -7,16 +7,16 @@ import { SkillManager } from './SkillManager.tsx'
 
 export const inject = ['slots', 'locale']
 
-/** Call one `/skill-manager-api/*` host endpoint (same-origin fetch) and return its value. */
+/** Call one `/dsh-skills-hub-api/*` host endpoint (same-origin fetch) and return its value. */
 export async function skillRpc<T>(endpoint: string, args: Record<string, unknown> = {}): Promise<T> {
-  const res = await fetch(`/skill-manager-api/${endpoint}`, {
+  const res = await fetch(`/dsh-skills-hub-api/${endpoint}`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify(args),
   })
   const data = await res.json().catch(() => null)
   if (!res.ok || !data?.ok) {
-    throw new Error(data?.error?.message ?? `skill-manager: ${endpoint} failed (${res.status})`)
+    throw new Error(data?.error?.message ?? `dsh-skills-hub: ${endpoint} failed (${res.status})`)
   }
   return data.value as T
 }
@@ -48,7 +48,7 @@ export function fetchWorkspaces(): Promise<WorkspacesResult> {
 }
 
 export function apply(ctx: Context): void {
-  ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'dsh-skill-manager: dictionaries')
+  ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'dsh-skills-hub: dictionaries')
   const t = ctx.locale.bind(NS)
   ctx.slots.inject('settings.section', () =>
     ctx.slots.register(
